@@ -152,6 +152,7 @@ void loop()
     if(score1 < 10){
     increaseScore1();
     }
+    delay(100);
   }
    
   if(switchValue & 0x04)
@@ -159,10 +160,10 @@ void loop()
     if(score1 > 0){
     decreaseScore1();
     }
+    delay(100);
   }  
 
   
   //WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, flip ? 0x80 : 0x40);
   //flip = !flip; 
-  delay(100); 
 }
