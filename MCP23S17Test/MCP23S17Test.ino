@@ -1,12 +1,13 @@
 #include <SPI.h>
 
-const int SPI_CS_PIN = 2;
+const int SPI_CS_PIN = 53;
 const byte IODIRA = 0x00;
 const byte IODIRB = 0x01;
 const byte GPPUA = 0x0C;
+const byte IOCON = 0x0A;
 const byte IOEXTENDERADDRESS = 0x40;
 const byte SPIIOCHIP1 = 0x00;
-const byte SPIIOCHIP2 = 0x01;
+const byte SPIIOCHIP2 = 0x02;
 const byte SPI_ACTION_READ = 0x01;
 const byte SPI_ACTION_WRITE = 0x00;
 const byte PORTA_OUTPUT_VALUE = 0x14;
@@ -36,23 +37,28 @@ void setup() {
   // Set SPI_CS pin to output and default HIGH
   pinMode(SPI_CS_PIN, OUTPUT);
   digitalWrite(SPI_CS_PIN, HIGH);
-  
+
   SPI.begin();
 
-  // Set IO direction for pin GPA0 & GPA2 to input. All other port A pins to output
-  WriteSPIValue(SPIIOCHIP1, IODIRA, 0x05);
+  // Enable hardware address pins
+  WriteSPIValue(SPIIOCHIP1, IOCON, 0x08);
+  
+  // Set IO direction for pin GPA6 & GPA7 to input. All other port A pins to output
+  WriteSPIValue(SPIIOCHIP1, IODIRA, 0xC0);
 
-  // Set input polarity for pin GPA0 & GPA2
-  WriteSPIValue(SPIIOCHIP1, PORTA_INPUT_POLARITY, 0x05);
+  // Set input polarity for pin GPA6 & GPA7
+  WriteSPIValue(SPIIOCHIP1, PORTA_INPUT_POLARITY, 0xC0);
   
   // Set IO direction for all port B pins to output
   WriteSPIValue(SPIIOCHIP1,IODIRB, 0x00);
 
-  // Configure pull up for pin GPA0 & GPA2
-  WriteSPIValue(SPIIOCHIP1,GPPUA, 0x05);
+  // Configure pull up for pin GPA6 & GPA7
+  WriteSPIValue(SPIIOCHIP1,GPPUA, 0xC0);
 
   Serial.begin(9600);
   Serial.println("Ready!");
+
+  score = 1;
 }
 
 void WriteSPIValue(byte chip, byte port, byte value) {
@@ -76,14 +82,29 @@ void loop() {
   // put your main code here, to run repeatedly:
   if(kittScanMode)
   {
+    if(score < 10 && flip)
+    {
+      score++;
+    }
+    if(score > 1 && !flip)
+    {
+      score--;
+    }
+    if(score == 10 || score == 1)
+    {
+      flip = !flip;
+    }
+    DisplayScore(score);
+    /*
     WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, pattern[patternCount]);
     patternCount++;
     if(patternCount == 14)
     {
       patternCount = 0;
     }
-    WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, flip ? 0x80 : 0x40);
+    WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, flip ? 0x01 : 0x02);
     flip = !flip;
+    */
   }
 
   delay(delayMs);
@@ -93,7 +114,7 @@ void loop() {
 
   if(pressTimer == 0)
   {
-    if(switchValue & 0x01)
+    if(switchValue & 0x40)
     {
       if(kittScanMode)
       {
@@ -112,7 +133,7 @@ void loop() {
       }
       Serial.println("Switch 1 pressed");
     }
-    if(switchValue & 0x04)
+    if(switchValue & 0x80)
     {
       if(kittScanMode)
       {
@@ -132,7 +153,7 @@ void loop() {
       Serial.println("Switch 2 pressed");
     }
     
-    if(switchValue & 0x01 && switchValue & 0x04 && pressTimer == 0)
+    if(switchValue & 0x40 && switchValue & 0x80 && pressTimer == 0)
     {
       pressTimer = 80;
     }
@@ -150,6 +171,7 @@ void loop() {
     
     WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, 0x00);
     WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, 0x00);
+    score = 0;
   }
 }
 
@@ -157,7 +179,9 @@ static void DisplayScore(byte score)
 {
   int intScore = score == 0x00 ? 0x00 : 0x01 << (score - 1);
   
-  WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 2);
+  Serial.print("Score: ");
+  Serial.println(intScore);
+  WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
   WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, intScore <= 0x00FF ? intScore : 0x00);
 }
 
