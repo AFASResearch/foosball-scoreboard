@@ -12,6 +12,8 @@ int orangeThreshold = 900;
 
 #include <SPI.h>
 
+const int LASERTIMEOUT = 1000;
+const int BUTTONTIMEOUT = 300;
 const int SPI_CS_PIN = 53;
 const byte IODIRA = 0x00;
 const byte IODIRB = 0x01;
@@ -91,25 +93,27 @@ void tafelCheck(){
       blueScoreCount++;
       DisplayScore(SPIIOCHIPBLUE, blueScoreCount);
     }
-    delay(1000);
+    delay(LASERTIMEOUT);
   }
   if(analogRead(orangeLightPin) < orangeThreshold){
     if(orangeScoreCount < 10) {
       orangeScoreCount++;
       DisplayScore(SPIIOCHIPORANGE, orangeScoreCount);
     }
-    delay(1000);
+    delay(LASERTIMEOUT);
   }
 }
 
-static void DisplayScore(byte chip, byte score)
+static void DisplayScore(byte chip, int score)
 {
-  int intScore = score == 0x00 ? 0x00 : 0x01 << (score - 1);
-  
-  Serial.print("Score: ");
-  Serial.println(intScore);
-  WriteSPIValue(chip, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
-  WriteSPIValue(chip, PORTB_OUTPUT_VALUE, intScore <= 0x00FF ? intScore : 0x00);
+  for(int i = 0; i <= score; i++) {
+    int intScore = score == 0x00 ? 0x00 : 0x01 << (i - 1);
+    
+    Serial.print("Score: ");
+    Serial.println(intScore);
+    WriteSPIValue(chip, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
+    WriteSPIValue(chip, PORTB_OUTPUT_VALUE, intScore <= 0x00FF ? intScore : 0x00);
+  }
 }
 
 void loop()
@@ -124,7 +128,7 @@ void loop()
       orangeScoreCount++;
       DisplayScore(SPIIOCHIPORANGE, orangeScoreCount);
     }
-    delay(300);
+    delay(BUTTONTIMEOUT);
   }
    
   if(switchValue & 0x80)
@@ -133,7 +137,7 @@ void loop()
       orangeScoreCount--;
       DisplayScore(SPIIOCHIPORANGE, orangeScoreCount);
     }
-    delay(300);
+    delay(BUTTONTIMEOUT);
   }  
 
   switchValue = ReadSPIValue(SPIIOCHIPBLUE, PORTA_INPUT_VALUE);
@@ -144,7 +148,7 @@ void loop()
       blueScoreCount++;
       DisplayScore(SPIIOCHIPBLUE, blueScoreCount);
     }
-    delay(300);
+    delay(BUTTONTIMEOUT);
   }
    
   if(switchValue & 0x80)
@@ -153,6 +157,6 @@ void loop()
       blueScoreCount--;
       DisplayScore(SPIIOCHIPBLUE, blueScoreCount);
     }
-    delay(300);
+    delay(BUTTONTIMEOUT);
   }  
 }
