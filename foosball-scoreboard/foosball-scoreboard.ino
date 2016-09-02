@@ -1,21 +1,25 @@
-int leftLightPin = 0;  //define a pin for Photo resistor
-int rightLightPin = 1;
+//orange=2
+//blue=1
 
-int leftCount = 0;
-int rightCount = 0;
+int blueLightPin = 0;  //define a pin for Photo resistor
+int orangeLightPin = 1;
 
-int leftThreshold = 450;
-int rightThreshold = 900;
+int blueScoreCount = 0;
+int orangeScoreCount = 0;
+
+int blueThreshold = 450;
+int orangeThreshold = 900;
 
 #include <SPI.h>
 
-const int SPI_CS_PIN = 2;
+const int SPI_CS_PIN = 53;
 const byte IODIRA = 0x00;
 const byte IODIRB = 0x01;
 const byte GPPUA = 0x0C;
+const byte IOCON = 0x0A;
 const byte IOEXTENDERADDRESS = 0x40;
-const byte SPIIOCHIP1 = 0x00;
-const byte SPIIOCHIP2 = 0x01;
+const byte SPIIOCHIPBLUE = 0x00;
+const byte SPIIOCHIPORANGE = 0x02;
 const byte SPI_ACTION_READ = 0x01;
 const byte SPI_ACTION_WRITE = 0x00;
 const byte PORTA_OUTPUT_VALUE = 0x14;
@@ -31,35 +35,36 @@ MOSI: 51
 MISO: 50
 */
 
-//byte pattern[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02 };
-//byte patternCount = 0;
-byte score1 = 0;
 bool flip = false;
 
-void setup()
-{
+void setup() {
+  // put your setup code here, to run once:
+
   // Set SPI_CS pin to output and default HIGH
   pinMode(SPI_CS_PIN, OUTPUT);
   digitalWrite(SPI_CS_PIN, HIGH);
-  
+
   SPI.begin();
 
-  // Set IO direction for pin GPA0 & GPA2 to input. All other port A pins to output
-  WriteSPIValue(SPIIOCHIP1, IODIRA, 0x05);
+  // At the start BLUE and ORANGE listen to every command!
 
-  // Set input polarity for pin GPA0 & GPA2
-  WriteSPIValue(SPIIOCHIP1, PORTA_INPUT_POLARITY, 0x05);
+  // Set IO direction for pin GPA6 & GPA7 to input. All other port A pins to output
+  WriteSPIValue(SPIIOCHIPBLUE, IODIRA, 0xC0);
+
+  // Set input polarity for pin GPA6 & GPA7
+  WriteSPIValue(SPIIOCHIPBLUE, PORTA_INPUT_POLARITY, 0xC0);
   
   // Set IO direction for all port B pins to output
-  WriteSPIValue(SPIIOCHIP1,IODIRB, 0x00);
+  WriteSPIValue(SPIIOCHIPBLUE,IODIRB, 0x00);
 
-  // Configure pull up for pin GPA0 & GPA2
-  WriteSPIValue(SPIIOCHIP1,GPPUA, 0x05);
+  // Configure pull up for pin GPA6 & GPA7
+  WriteSPIValue(SPIIOCHIPBLUE,GPPUA, 0xC0);
 
-    WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, 0x00);
-      WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, 0x00);
+  // Enable hardware address pins: after this blue and orange are different!
+  WriteSPIValue(SPIIOCHIPBLUE, IOCON, 0x08);
 
-  Serial.begin(9600);  //Begin serial communcation
+  Serial.begin(9600);
+  Serial.println("Ready!");
 }
 
 void WriteSPIValue(byte chip, byte port, byte value) {
@@ -81,89 +86,73 @@ byte ReadSPIValue(byte chip, byte port) {
 
 
 void tafelCheck(){
-  if(analogRead(leftLightPin) < leftThreshold){
-    if(score1 < 10){
-    Serial.print("left ");
-    increaseScore1();
+  if(analogRead(blueLightPin) < blueThreshold){
+    if(blueScoreCount < 10) {
+      blueScoreCount++;
+      DisplayScore(SPIIOCHIPBLUE, blueScoreCount);
     }
     delay(1000);
   }
-  if(analogRead(rightLightPin) < rightThreshold){
-    if(score1 > 0){
-    Serial.print("right ");
-    decreaseScore1();
+  if(analogRead(orangeLightPin) < orangeThreshold){
+    if(orangeScoreCount < 10) {
+      orangeScoreCount++;
+      DisplayScore(SPIIOCHIPORANGE, orangeScoreCount);
     }
     delay(1000);
   }
 }
 
-void increaseScore1(){
-    score1++;
-    int byteScore = 0x01 << (score1-1);
-    
-    Serial.println(byteScore);
-    if(score1 < 9)
-    { 
-      WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, byteScore);
-      WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, 0x00);
-    }  
-    else
-    {
-      WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, byteScore >> 2);
-      WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, 0x00);
-    }
-    
-    Serial.println("Button 1 pressed");
-    
-    byte switchValue = ReadSPIValue(SPIIOCHIP1, PORTA_INPUT_VALUE);
-    while(switchValue & 0x01) 
-    { switchValue = ReadSPIValue(SPIIOCHIP1, PORTA_INPUT_VALUE);}
-}
-
-void decreaseScore1(){
-    score1--;
-    int byteScore = 0x01 << (score1-1);
-    
-    Serial.println(byteScore);
-    if(score1 < 9){
-      WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, byteScore);
-      WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, 0x00);
-    }
-    else
-    {
-      WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, byteScore >> 2);
-      WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, 0x00);
-    }
-    
-    Serial.println("Button 2 pressed");
-    byte switchValue = ReadSPIValue(SPIIOCHIP1, PORTA_INPUT_VALUE);
-    while(switchValue & 0x04) 
-    { switchValue = ReadSPIValue(SPIIOCHIP1, PORTA_INPUT_VALUE);}
+static void DisplayScore(byte chip, byte score)
+{
+  int intScore = score == 0x00 ? 0x00 : 0x01 << (score - 1);
+  
+  Serial.print("Score: ");
+  Serial.println(intScore);
+  WriteSPIValue(chip, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
+  WriteSPIValue(chip, PORTB_OUTPUT_VALUE, intScore <= 0x00FF ? intScore : 0x00);
 }
 
 void loop()
 {
   tafelCheck();
-  //WriteSPIValue(SPIIOCHIP1, PORTB_OUTPUT_VALUE, pattern[patternCount]);
-  byte switchValue = ReadSPIValue(SPIIOCHIP1, PORTA_INPUT_VALUE);
+
+  byte switchValue = ReadSPIValue(SPIIOCHIPORANGE, PORTA_INPUT_VALUE);
   
-  if(switchValue & 0x01)
+  if(switchValue & 0x40)
   {
-    if(score1 < 10){
-    increaseScore1();
+    if(orangeScoreCount < 10) {
+      orangeScoreCount++;
+      DisplayScore(SPIIOCHIPORANGE, orangeScoreCount);
     }
-    delay(100);
+    delay(300);
   }
    
-  if(switchValue & 0x04)
+  if(switchValue & 0x80)
   {
-    if(score1 > 0){
-    decreaseScore1();
+    if(orangeScoreCount > 0) {
+      orangeScoreCount--;
+      DisplayScore(SPIIOCHIPORANGE, orangeScoreCount);
     }
-    delay(100);
+    delay(300);
   }  
 
+  switchValue = ReadSPIValue(SPIIOCHIPBLUE, PORTA_INPUT_VALUE);
   
-  //WriteSPIValue(SPIIOCHIP1, PORTA_OUTPUT_VALUE, flip ? 0x80 : 0x40);
-  //flip = !flip; 
+  if(switchValue & 0x40)
+  {
+    if(blueScoreCount < 10) {
+      blueScoreCount++;
+      DisplayScore(SPIIOCHIPBLUE, blueScoreCount);
+    }
+    delay(300);
+  }
+   
+  if(switchValue & 0x80)
+  {
+    if(blueScoreCount > 0) {
+      blueScoreCount--;
+      DisplayScore(SPIIOCHIPBLUE, blueScoreCount);
+    }
+    delay(300);
+  }  
 }
