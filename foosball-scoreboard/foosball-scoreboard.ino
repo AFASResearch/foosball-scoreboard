@@ -4,8 +4,8 @@
 int blueLightPin = 0;  //define a pin for Photo resistor
 int orangeLightPin = 1;
 
-int blueScoreCount = 0;
-int orangeScoreCount = 0;
+byte blueScoreCount = 0;
+byte orangeScoreCount = 0;
 
 int blueThreshold = 450;
 int orangeThreshold = 900;
@@ -104,16 +104,16 @@ void tafelCheck(){
   }
 }
 
-static void DisplayScore(byte chip, int score)
+static void DisplayScore(byte chip, byte score)
 {
+  int intScore = 0;
+
   for(int i = 0; i <= score; i++) {
-    int intScore = score == 0x00 ? 0x00 : 0x01 << (i - 1);
-    
-    Serial.print("Score: ");
-    Serial.println(intScore);
-    WriteSPIValue(chip, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
-    WriteSPIValue(chip, PORTB_OUTPUT_VALUE, intScore <= 0x00FF ? intScore : 0x00);
-  }
+    intScore += score == 0x00 ? 0x00 : 0x01 << (i - 1);
+  {
+
+  WriteSPIValue(chip, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
+  WriteSPIValue(chip, PORTB_OUTPUT_VALUE, intScore);  
 }
 
 void loop()
