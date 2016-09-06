@@ -110,7 +110,7 @@ static void DisplayScore(byte chip, byte score)
 
   for(int i = 0; i <= score; i++) {
     intScore += score == 0x00 ? 0x00 : 0x01 << (i - 1);
-  {
+  }
 
   WriteSPIValue(chip, PORTA_OUTPUT_VALUE, intScore <= 0x00FF ? 0x00 : intScore >> 8);
   WriteSPIValue(chip, PORTB_OUTPUT_VALUE, intScore);  
